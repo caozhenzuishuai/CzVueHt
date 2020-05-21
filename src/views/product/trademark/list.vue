@@ -9,7 +9,6 @@
     >
 
     <el-table v-loading="loading" :data="trademarks" border stripe>
-      <!-- 序号列 -->
       <el-table-column label="序号" type="index" width="80" align="center">
       </el-table-column>
 
@@ -52,15 +51,23 @@
     >
     </el-pagination>
     <el-dialog :title="form.id ? '更新' : '添加'" :visible.sync="isShowDialog">
-      <el-form :model="form" style="width: 80%">
-        <el-form-item label="品牌名称" :label-width="formLabelWidth">
+      <el-form :model="form" style="width: 80%" :rules="rules" ref="tmForm">
+        <el-form-item
+          label="品牌名称"
+          :label-width="formLabelWidth"
+          prop="tmName"
+        >
           <el-input
             v-model="form.tmName"
             autocomplete="off"
             placeholder="请输入品牌名称"
           ></el-input>
         </el-form-item>
-        <el-form-item label="品牌LOGO" :label-width="formLabelWidth">
+        <el-form-item
+          label="品牌LOGO"
+          :label-width="formLabelWidth"
+          prop="logoUrl"
+        >
           <el-upload
             class="avatar-uploader"
             action="/dev-api/admin/product/fileUpload"
@@ -85,7 +92,6 @@
     </el-dialog>
   </div>
 </template>
-
 <script>
 export default {
   name: "TrademarkList",
@@ -101,13 +107,43 @@ export default {
         tmName: "",
         logoUrl: ""
       },
-      formLabelWidth: "100px"
+      formLabelWidth: "100px",
+      rules: {
+        /*
+          品牌名称:
+              必须输入   输入过程中触发校验
+              长度必须在2-10个之间   失去焦点时触发校验
+          品牌LOGO:
+              必须有
+          */
+        tmName: [
+          {
+            required: true,
+            message: "请输入品牌名称",
+            trigger: "change"
+          } /* validator校验器: 用于校验的回调函数 */ /* 值发生改变时触发 */ /* 失去焦点触发 */,
+          /* { min: 2, max: 10, message: '长度在 2 到 10 个字符', trigger: 'blur' } */ {
+            validator: this.validateTmName,
+            trigger: "blur"
+          }
+        ],
+        logoUrl: [{ required: true, message: "请指定LOGO图片" }]
+      }
     };
   },
   mounted() {
     this.getTrademarks();
   },
   methods: {
+    //校验品牌名称自定义校验函数
+    validateTmName(rule, value, callback) {
+      console.log("validateTmName()", value);
+      if (value.length < 2 || value.length > 10) {
+        callback(new Error("长度在 2 到 10 个字符"));
+      } else {
+        callback();
+      }
+    },
     // 上传图片
     handleLogoSuccess(res, file) {
       const logoUrl = res.data;
@@ -155,7 +191,8 @@ export default {
     },
     //显示修改界面
     showUpdate(trademark) {
-      this.form = trademark;
+      // this.form = trademark;
+      this.form = { ...trademark };
       this.isShowDialog = true;
     },
     //添加或更新品牌
