@@ -1,37 +1,36 @@
 <template>
   <div>
     <el-card>
-      <CategorySelector @categoryChange="handleCategoryChange" ref="cs" />
+      <CategorySelector ref="cs" @categoryChange="handleCategoryChange" />
     </el-card>
 
-    <el-card style="margin-top: 20px">
+    <el-card>
       <div v-show="isShowList">
         <el-button
           type="primary"
           icon="el-icon-plus"
           style="margin-bottom: 20px"
-          @click="toAddAttr"
-          :disabled="category3Id === null"
+          @click="showAdd"
+          :disabled="!category3Id"
           >添加属性</el-button
         >
 
-        <el-table border :data="attrList">
+        <el-table border :data="attrs">
           <el-table-column
             label="序号"
             type="index"
-            width="100"
+            width="80"
             align="center"
           ></el-table-column>
-
           <el-table-column
-            label="名称"
-            width="200"
+            label="属性名称"
+            width="150"
             prop="attrName"
           ></el-table-column>
-
           <el-table-column label="属性值列表">
-            <template slot-scope="{ row }">
+            <template slot-scope="{ row, $index }">
               <el-tag
+                style="margin: 2px"
                 type="info"
                 v-for="value in row.attrValueList"
                 :key="value.id"
@@ -39,7 +38,6 @@
               >
             </template>
           </el-table-column>
-
           <el-table-column label="操作" width="150">
             <template slot-scope="{ row, $index }">
               <HintButton
@@ -47,75 +45,76 @@
                 type="primary"
                 icon="el-icon-edit"
                 size="mini"
-                @click="toUpdateAttr(row)"
+                @click="showUpdate(row)"
               ></HintButton>
               <el-popconfirm
-                :title="`确定删除属性 ${row.attrName} 吗?`"
+                :title="`确定删除 '${row.attrName}' 吗`"
                 @onConfirm="deleteAttr(row.id)"
               >
-                <HintButton
+                <hint-button
                   slot="reference"
                   title="删除"
                   type="danger"
                   icon="el-icon-delete"
                   size="mini"
-                ></HintButton>
+                />
               </el-popconfirm>
             </template>
           </el-table-column>
         </el-table>
       </div>
+
       <div v-show="!isShowList">
         <el-form inline :model="attr">
-          <el-form-item label="属性名称">
-            <el-input type="text" v-model="attr.attrName" />
+          <el-form-item label="属性名">
+            <el-input
+              type="text"
+              v-model="attr.attrName"
+              placeholder="请输入属性名"
+            ></el-input>
           </el-form-item>
         </el-form>
 
-        <div style="margin-bottom: 20px">
-          <el-button
-            type="primary"
-            icon="el-icon-plus"
-            @click="addValue"
-            :disabled="!attr.attrName.trim()"
-            >添加属性值</el-button
-          >
-          <el-button @click="isShowList = true">取消</el-button>
-        </div>
-
-        <el-table border :data="attr.attrValueList">
+        <el-button
+          type="primary"
+          icon="el-icon-plus"
+          :disabled="!attr.attrName"
+          @click="addAttrValue"
+          >添加属性值</el-button
+        >
+        <el-button @click="isShowList = true">取消</el-button>
+        <el-table border style="margin: 20px 0" :data="attr.attrValueList">
           <el-table-column
             label="序号"
             type="index"
-            width="100"
+            width="80"
             align="center"
           ></el-table-column>
-
           <el-table-column label="属性值名称">
             <template slot-scope="{ row, $index }">
               <el-input
-                type="text"
-                size="mini"
-                placeholder="输入属性值按enter确定"
-                v-model="row.valueName"
+                :ref="$index"
                 v-if="row.edit"
-                @blur="toViewValue(row)"
-                @keyup.enter.native="toViewValue(row)"
+                v-model="row.valueName"
+                size="mini"
+                placeholder="请输入属性值名称"
+                @blur="toShow(row)"
+                @keyup.enter.native="toShow(row)"
               ></el-input>
               <span
                 v-else
-                @click="toEditValue(row)"
-                style="display: inline-block;width: 100%;"
-                >{{ row.valueName }}</span
+                @click="toEdit(row, $index)"
+                style="display: inline-block; width: 100%"
               >
+                {{ row.valueName }}
+              </span>
             </template>
           </el-table-column>
-
           <el-table-column label="操作">
             <template slot-scope="{ row, $index }">
               <el-popconfirm
-                :title="`确定删除属性值 ${row.valueName} 吗?`"
-                @onConfirm="deleteValue($index)"
+                :title="`确定删除 '${row.valueName}' 吗`"
+                @onConfirm="attr.attrValueList.splice($index, 1)"
               >
                 <HintButton
                   slot="reference"
@@ -128,16 +127,13 @@
             </template>
           </el-table-column>
         </el-table>
-
-        <div style="margin: 20px 0">
-          <el-button
-            type="primary"
-            @click="addUpdateAttr"
-            :disabled="!isSaveValid"
-            >保存</el-button
-          >
-          <el-button @click="isShowList = true">取消</el-button>
-        </div>
+        <el-button
+          type="primary"
+          @click="save"
+          :disabled="!attr.attrName || attr.attrValueList.length === 0"
+          >保存</el-button
+        >
+        <el-button @click="isShowList = true">取消</el-button>
       </div>
     </el-card>
   </div>
@@ -150,66 +146,94 @@ export default {
 
   data() {
     return {
-      attrList: [],
-      category1Id: null,
-      category2Id: null,
-      category3Id: null,
+      category1Id: "",
+      category2Id: "",
+      category3Id: "",
+      attrs: [],
+
       isShowList: true,
 
       attr: {
         attrName: "",
-        attrValueList: []
+        attrValueList: [],
+        categoryId: "",
+        categoryLevel: 3
       }
     };
   },
 
-  computed: {
-    isSaveValid() {
-      return (
-        this.attr.attrName.trim() &&
-        this.attr.attrValueList.some(item => !!item.valueName.trim())
-      );
-    }
+  mounted() {
+    // this.category1Id = 2
+    // this.category2Id = 13
+    // this.category3Id = 61
+    // this.getAttrs()
   },
 
   watch: {
     isShowList(value) {
-      this.$refs.cs.isDisabled = !value;
+      this.$refs.cs.disabled = !value;
     }
   },
 
   methods: {
-    handleCategoryChange({ categoryId, level }) {
-      console.log("handleCategoryChange", categoryId, level);
-      if (level === 3) {
-        this.category3Id = categoryId;
-        this.getList();
-      } else if (level === 1) {
-        this.category1Id = categoryId;
-        this.category2Id = null;
-        this.category3Id = null;
-        this.attrList = [];
+    deleteAttr(id) {
+      this.$API.attr
+        .remove(id)
+        .then(result => {
+          this.getAttrs();
+        })
+        .catch(error => {
+          this.$message.error("删除属性失败");
+        });
+    },
+    async save() {
+      const attr = this.attr;
+      attr.attrValueList = attr.attrValueList.filter(value => {
+        if (value.valueName !== "") {
+          delete value.edit;
+          return true;
+        }
+      });
+      if (attr.attrValueList.length === 0) {
+        this.$message.warning("至少指定一个属性值名称");
+        return;
+      }
+
+      const result = await this.$API.attr.addOrUpdate(attr);
+      if (result.code === 200) {
+        this.$message.success("保存属性成功");
+        this.isShowList = true;
+        this.getAttrs();
       } else {
-        this.category2Id = categoryId;
-        this.category3Id = null;
-        this.attrList = [];
+        this.$message.error("保存属性失败");
       }
     },
-
-    async getList() {
-      const result = await this.$API.attr.getList(
-        this.category1Id,
-        this.category2Id,
-        this.category3Id
-      );
-      this.attrList = result.data;
+    toEdit(value, index) {
+      if (value.hasOwnProperty("edit")) {
+        value.edit = true;
+      } else {
+        this.$set(value, "edit", true);
+      }
+      this.$nextTick(() => {
+        this.$refs[index].focus();
+      });
     },
-
-    toUpdateAttr(attr) {
-      this.attr = cloneDeep(attr);
-      this.isShowList = false;
+    toShow(value) {
+      if (value.valueName) {
+        const isRepeat = this.attr.attrValueList.some((item, index) => {
+          if (item !== value) {
+            return item.valueName === value.valueName;
+          }
+        });
+        if (!isRepeat) {
+          value.edit = false;
+        } else {
+          value.valueName = "";
+          this.$message.warning("输入的名称已存在");
+        }
+      }
     },
-    toAddAttr() {
+    showAdd() {
       this.attr = {
         attrName: "",
         attrValueList: [],
@@ -218,55 +242,56 @@ export default {
       };
       this.isShowList = false;
     },
-    deleteValue(index) {
-      this.attr.attrValueList.splice(index, 1);
+    showUpdate(attr) {
+      this.attr = cloneDeep(attr);
+      this.isShowList = false;
     },
-
-    addValue() {
+    addAttrValue() {
       this.attr.attrValueList.push({
-        valueName: "",
         attrId: this.attr.id,
+        valueName: "",
         edit: true
       });
-    },
-    toViewValue(value) {
-      if (value.valueName) {
-        value.edit = false;
-      }
-    },
-    toEditValue(value) {
-      if (!value.hasOwnProperty("edit")) {
-        this.$set(value, "edit", true);
-      } else {
-        value.edit = true;
-      }
-    },
 
-    async addUpdateAttr() {
-      this.attr.attrValueList = this.attr.attrValueList.filter(value => {
-        delete value.edit;
-        return !!value.valueName.trim();
+      this.$nextTick(() => {
+        this.$refs[this.attr.attrValueList.length - 1].focus();
       });
-      const result = await this.$API.attr.addOrUpdate(this.attr);
-      if (result.code === 200) {
-        this.$message.success(`${this.attr.id ? "更新" : "添加"}属性成功`);
-        this.isShowList = true;
-        this.getList();
+    },
+    handleCategoryChange({ categoryId, level }) {
+      if (level === 1) {
+        this.category1Id = categoryId;
+        this.category2Id = "";
+        this.category3Id = "";
+        this.attrs = [];
+      } else if (level === 2) {
+        this.category2Id = categoryId;
+        this.category3Id = "";
+        this.attrs = [];
       } else {
-        this.$message.error(`${this.attr.id ? "更新" : "添加"}属性失败`);
+        this.category3Id = categoryId;
+        this.getAttrs();
       }
     },
-    async deleteAttr(id) {
-      const result = await this.$API.attr.remove(id);
-      if (result.code === 200) {
-        this.$message.success(`删除属性成功`);
-        this.getList();
-      } else {
-        this.$message.error(`删除属性失败`);
-      }
+    async getAttrs() {
+      const { category1Id, category2Id, category3Id } = this;
+      const result = await this.$API.attr.getList(
+        category1Id,
+        category2Id,
+        category3Id
+      );
+      this.attrs = result.data;
     }
   }
 };
 </script>
 
-<style scoped></style>
+<style scoped>
+.edit-input {
+  padding-right: 60px;
+}
+.save-btn {
+  position: absolute;
+  right: 15px;
+  top: 10px;
+}
+</style>
