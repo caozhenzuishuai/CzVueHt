@@ -11,6 +11,7 @@
           type="primary"
           icon="el-icon-plus"
           style="margin-bottom: 20px"
+          @click="showAddSpu"
           >添加SPU</el-button
         >
         <el-table v-loading="loading" :data="spuList" border stripe>
@@ -64,15 +65,17 @@
       </div>
       <SpuForm ref="spuForm" :visible.sync="isShowSpuForm"></SpuForm>
 
-      <SkuForm v-show="isShowSkuForm"></SkuForm>
+      <SkuForm v-show="isShowSkuForm" @cancel="isShowSkuForm = false"></SkuForm>
     </el-card>
   </div>
 </template>
+
 <script>
 import SpuForm from "../components/SpuForm";
 import SkuForm from "../components/SkuForm";
 export default {
   name: "SpuList",
+
   data() {
     return {
       category1Id: "",
@@ -93,14 +96,20 @@ export default {
     this.category3Id = 61;
     this.getSpuList();
   },
+
   methods: {
     showSkuAdd() {
       this.isShowSkuForm = true;
+    },
+    showAddSpu() {
+      this.isShowSpuForm = true;
+      this.$refs.spuForm.initLoadAddData();
     },
     showUpdateSpu(id) {
       this.isShowSpuForm = true;
       this.$refs.spuForm.initLoadUpdateData(id);
     },
+
     handleCategoryChange({ categoryId, level }) {
       if (level === 1) {
         this.category1Id = categoryId;
@@ -116,6 +125,7 @@ export default {
         this.getSpuList();
       }
     },
+
     async getSpuList(page = 1) {
       this.page = page;
       const { limit, category3Id } = this;
@@ -131,6 +141,7 @@ export default {
       this.getSpuList(1);
     }
   },
+
   components: {
     SpuForm,
     SkuForm
