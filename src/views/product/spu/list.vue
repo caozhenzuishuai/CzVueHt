@@ -1,7 +1,8 @@
 <template>
   <div>
-    <el-card style="margin-bottom: 20px">
+    <el-card style="margin-bottom: 20px" v-show="!isShowSkuForm">
       <category-selector
+        ref="cs"
         @categoryChange="handleCategoryChange"
       ></category-selector>
     </el-card>
@@ -12,9 +13,11 @@
           icon="el-icon-plus"
           style="margin-bottom: 20px"
           @click="showAddSpu"
+          :disabled="!category3Id"
           >添加SPU</el-button
         >
         <el-table v-loading="loading" :data="spuList" border stripe>
+          <!-- 序号列 -->
           <el-table-column label="序号" type="index" width="80" align="center">
           </el-table-column>
           <el-table-column label="SPU名称" prop="spuName"> </el-table-column>
@@ -27,7 +30,7 @@
                 type="primary"
                 icon="el-icon-plus"
                 size="mini"
-                @click="showSkuAdd"
+                @click="showSkuAdd(row)"
               ></hint-button>
               <hint-button
                 title="修改SPU"
@@ -41,13 +44,17 @@
                 type="info"
                 icon="el-icon-info"
                 size="mini"
+                @click="showSkuList(row)"
               ></hint-button>
-              <hint-button
-                title="删除SPU"
-                type="danger"
-                icon="el-icon-delete"
-                size="mini"
-              ></hint-button>
+              <el-popconfirm title="确定删除吗?" @onConfirm="deleteSpu(row.id)">
+                <hint-button
+                  slot="reference"
+                  title="删除SPU"
+                  type="danger"
+                  icon="el-icon-delete"
+                  size="mini"
+                ></hint-button>
+              </el-popconfirm>
             </template>
           </el-table-column>
         </el-table>
@@ -63,10 +70,37 @@
           @size-change="handleSizeChange"
         />
       </div>
-      <SpuForm ref="spuForm" :visible.sync="isShowSpuForm"></SpuForm>
+      <SpuForm
+        ref="spuForm"
+        :visible.sync="isShowSpuForm"
+        @saveSuccess="handleSaveSuccess"
+        @cancel="handleCancel"
+      ></SpuForm>
 
-      <SkuForm v-show="isShowSkuForm" @cancel="isShowSkuForm = false"></SkuForm>
+      <SkuForm
+        ref="skuForm"
+        v-show="isShowSkuForm"
+        @cancel="isShowSkuForm = false"
+        :saveSuccess="() => (isShowSkuForm = false)"
+      ></SkuForm>
     </el-card>
+
+    <el-dialog title="收货地址" :visible.sync="isShowSkuList">
+      <el-table :data="skuList" border>
+        <el-table-column property="skuName" label="名称"></el-table-column>
+        <el-table-column property="price" label="价格(元)"></el-table-column>
+        <el-table-column property="weight" label="重量(KG)"></el-table-column>
+        <el-table-column label="默认图片">
+          <template slot-scope="{ row }">
+            <img
+              :src="row.skuDefaultImg"
+              alt=""
+              style="width: 100px;height:100px"
+            />
+          </template>
+        </el-table-column>
+      </el-table>
+    </el-dialog>
   </div>
 </template>
 
@@ -89,23 +123,59 @@ export default {
       total: 0,
 
       isShowSpuForm: false,
-      isShowSkuForm: false
+      isShowSkuForm: false,
+      isShowSkuList: false,
+      spu: {},
+      skuList: []
     };
   },
   mounted() {
-    this.category3Id = 61;
-    this.getSpuList();
+    // this.category3Id = 61;
+    // this.getSpuList();
   },
-
+  watch: {
+    isShowSpuForm(value) {
+      this.$refs.cs.disabled = value;
+    }
+  },
   methods: {
-    showSkuAdd() {
+    async deleteSpu(spuId) {
+      const result = await this.$API.spu.remove(spuId);
+      if (result.code === 200) {
+        this.$message.success("删除成功");
+        this.getSpuList();
+      } else {
+        this.$message.error(result.data || result.message || "删除失败");
+      }
+    },
+    async showSkuList(spu) {
+      this.isShowSkuList = true;
+      this.spu = spu;
+      // 异步请求获取sku列表
+      const result = await this.$API.sku.getListBySpuId(spu.id);
+      this.skuList = result.data;
+    },
+    handleSaveSuccess() {
+      this.getSpuList(this.spuId ? this.page : 1);
+      this.spuId = null;
+    },
+    handleCancel() {
+      // 重置更新的标识
+      this.spuId = null;
+    },
+    showSkuAdd(spu) {
       this.isShowSkuForm = true;
+      spu = { ...spu };
+      spu.category1Id = this.category1Id;
+      spu.category2Id = this.category2Id;
+      this.$refs.skuForm.initLoadAddData(spu);
     },
     showAddSpu() {
       this.isShowSpuForm = true;
-      this.$refs.spuForm.initLoadAddData();
+      this.$refs.spuForm.initLoadAddData(this.category3Id);
     },
     showUpdateSpu(id) {
+      this.spuId = id;
       this.isShowSpuForm = true;
       this.$refs.spuForm.initLoadUpdateData(id);
     },

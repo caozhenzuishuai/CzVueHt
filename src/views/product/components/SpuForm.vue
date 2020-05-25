@@ -180,9 +180,30 @@ export default {
       const result = await this.$API.spu.addUpdate(spuInfo);
       if (result.code === 200) {
         this.$message.success("保存SPU成功");
+        this.resetData();
+        this.$emit("update:visible", false);
+        this.$emit("saveSuccess");
       } else {
         this.$message.error("保存SPU失败");
       }
+    },
+    resetData() {
+      this.dialogImageUrl = "";
+      this.dialogVisible = false;
+
+      this.spuId = null;
+      this.spuInfo = {
+        category3Id: "",
+        spuName: "",
+        description: "",
+        tmId: "",
+        spuImageList: [],
+        spuSaleAttrList: []
+      };
+      this.spuImageList = [];
+      this.trademarkList = [];
+      this.saleAttrList = [];
+      this.attrIdAttrName = "";
     },
     handleInputConfirm(spuSaleAttr) {
       const { saleAttrValueName, baseSaleAttrId } = spuSaleAttr;
@@ -197,7 +218,6 @@ export default {
         this.$message.warning("不能重复!");
         return;
       }
-
       spuSaleAttr.spuSaleAttrValueList.push({
         saleAttrValueName,
         baseSaleAttrId
@@ -217,7 +237,6 @@ export default {
 
     addSpuSaleAttr() {
       const [baseSaleAttrId, saleAttrName] = this.attrIdAttrName.split(":");
-
       this.spuInfo.spuSaleAttrList.push({
         baseSaleAttrId,
         saleAttrName,
@@ -227,14 +246,14 @@ export default {
       this.attrIdAttrName = "";
     },
 
-    initLoadAddData() {
+    initLoadAddData(category3Id) {
+      this.spuInfo.category3Id = category3Id;
       this.getTrademarkList();
       this.getSaleAttrList();
     },
 
     initLoadUpdateData(spuId) {
       this.spuId = spuId;
-
       this.getSpuInfo();
       this.getSpuImageList();
       this.getTrademarkList();
@@ -281,7 +300,9 @@ export default {
     },
 
     back() {
+      this.resetData();
       this.$emit("update:visible", false);
+      this.$emit("cancel");
     }
   }
 };

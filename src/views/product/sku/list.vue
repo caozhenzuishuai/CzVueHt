@@ -1,5 +1,5 @@
 <template>
-  <el-card>
+  <el-card class="sku-list">
     <el-table border stripe :data="skuList" v-loading="loading">
       <el-table-column
         type="index"
@@ -37,7 +37,7 @@
           <HintButton
             v-if="row.isSale == 0"
             title="上架"
-            type="success"
+            type="info"
             size="mini"
             icon="el-icon-top"
             @click="onSale(row.id)"
@@ -46,7 +46,7 @@
           <HintButton
             v-if="row.isSale == 1"
             title="下架"
-            type="warning"
+            type="success"
             size="mini"
             icon="el-icon-bottom"
             @click="cancelSale(row.id)"
@@ -94,6 +94,68 @@
       @current-change="getSkuList"
       @size-change="changeSize"
     />
+
+    <el-drawer
+      :visible.sync="isShowSkuInfo"
+      direction="rtl"
+      :withHeader="false"
+      size="50%"
+    >
+      <el-row>
+        <el-col :span="5">名称</el-col>
+        <el-col :span="16">{{ skuInfo.skuName }}</el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="5">描述</el-col>
+        <el-col :span="16">{{ skuInfo.skuDesc }}</el-col>
+      </el-row>
+      <el-row>
+        <el-col :span="5">价格</el-col>
+        <el-col :span="16">{{ skuInfo.price }}</el-col>
+      </el-row>
+
+      <el-row>
+        <el-col :span="5">平台属性</el-col>
+        <el-col :span="18">
+          <el-tag
+            type="success"
+            style="margin-right: 5px"
+            v-for="value in skuInfo.skuAttrValueList"
+            :key="value.id"
+          >
+            {{ value.attrId + "-" + value.valueId }}
+          </el-tag>
+        </el-col>
+      </el-row>
+
+      <el-row>
+        <el-col :span="5">销售属性</el-col>
+        <el-col :span="18">
+          <el-tag
+            type="success"
+            style="margin-right: 5px"
+            v-for="value in skuInfo.skuSaleAttrValueList"
+            :key="value.id"
+          >
+            {{ value.id + "-" + value.saleAttrValueId }}
+          </el-tag>
+        </el-col>
+      </el-row>
+
+      <el-row>
+        <el-col :span="5">商品图片</el-col>
+        <el-col :span="16">
+          <el-carousel class="img-carousel" trigger="click" height="400px">
+            <el-carousel-item
+              v-for="item in skuInfo.skuImageList"
+              :key="item.id"
+            >
+              <img :src="item.imgUrl" alt="" />
+            </el-carousel-item>
+          </el-carousel>
+        </el-col>
+      </el-row>
+    </el-drawer>
   </el-card>
 </template>
 
@@ -108,7 +170,8 @@ export default {
       total: 0,
       page: 1,
       limit: 10,
-      skuInfo: {}
+      skuInfo: {},
+      isShowSkuInfo: false
     };
   },
 
@@ -117,8 +180,14 @@ export default {
   },
 
   methods: {
-    showSkuInfo(skuId) {
-      this.$message.info("实现");
+    handleClose(close) {
+      this.skuInfo = {};
+      this.isShowSkuInfo = false;
+    },
+    async showSkuInfo(id) {
+      this.isShowSkuInfo = true;
+      const result = await this.$API.sku.get(id);
+      this.skuInfo = result.data;
     },
     changeSize(size) {
       this.limit = size;
@@ -128,9 +197,9 @@ export default {
       this.page = page;
       this.loading = true;
       const result = await this.$API.sku.getList(this.page, this.limit);
-      this.loading = false;
       this.skuList = result.data.records;
       this.total = result.data.total;
+      this.loading = false;
     },
     onSale(skuId) {
       this.$API.sku.onSale(skuId).then(result => {
@@ -151,7 +220,7 @@ export default {
       });
     },
     toUpdateSku(skuId) {
-      this.$message.warning("缺少接口的支持, 待开发!");
+      this.$message.warning("待完成!");
     },
     async deleteSku(skuId) {
       const result = await this.$API.sku.remove(skuId);
@@ -163,7 +232,7 @@ export default {
         this.getSkuList(1);
       } else {
         this.$message({
-          message: "删除SKU失败",
+          message: result.data || result.message || "删除SKU失败",
           type: "error"
         });
       }
@@ -172,4 +241,40 @@ export default {
 };
 </script>
 
-<style lang="scss" scoped></style>
+<style lang="scss" scoped>
+.sku-list {
+  .el-row {
+    height: 40px;
+    margin-left: 10px;
+    .el-col {
+      line-height: 40px;
+      &.el-col-5 {
+        text-align: right;
+        font-weight: bold;
+        font-size: 18px;
+        margin-right: 15px;
+      }
+    }
+  }
+  .img-carousel {
+    width: 400px;
+    border: 1px solid #ccc;
+    img {
+      width: 100%;
+      height: 100%;
+    }
+
+    /deep/ .el-carousel__indicator {
+      button {
+        background-color: hotpink;
+      }
+
+      &.is-active {
+        button {
+          background-color: green;
+        }
+      }
+    }
+  }
+}
+</style>
