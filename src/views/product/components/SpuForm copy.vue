@@ -1,6 +1,6 @@
 <template>
-  <el-form v-show="visible" label-width="100px">
-    <el-form-item label="Spu名称">
+  <el-form label-width="100px" v-show="visible">
+    <el-form-item label="SPU名称">
       <el-input
         type="text"
         placeholder="SPU名称"
@@ -17,7 +17,7 @@
         ></el-option>
       </el-select>
     </el-form-item>
-    <el-form-item label="Spu描述">
+    <el-form-item label="SPU描述">
       <el-input
         type="textarea"
         placeholder="SPU描述"
@@ -25,7 +25,7 @@
         v-model="spuInfo.description"
       ></el-input>
     </el-form-item>
-    <el-form-item label="Spu图片">
+    <el-form-item label="SPU图片">
       <el-upload
         multiple
         :file-list="spuImageList"
@@ -37,11 +37,12 @@
       >
         <i class="el-icon-plus"></i>
       </el-upload>
-
+      <!-- 显示大图的dialog -->
       <el-dialog :visible.sync="dialogVisible">
         <img width="100%" :src="dialogImageUrl" alt="" />
       </el-dialog>
     </el-form-item>
+
     <el-form-item label="销售属性">
       <el-select
         v-model="attrIdAttrName"
@@ -75,7 +76,7 @@
         <el-table-column label="属性名" prop="saleAttrName" width="150px">
         </el-table-column>
         <el-table-column label="属性值名称列表">
-          <template slot-scope="{ row, $index }">
+          <template slot-scope="{ row }">
             <el-tag
               style="margin-right: 5px"
               v-for="(value, index) in row.spuSaleAttrValueList"
@@ -130,10 +131,10 @@
 
 <script>
 export default {
-  name: "SpuFrom",
   props: {
     visible: Boolean
   },
+
   data() {
     return {
       dialogImageUrl: "",
@@ -152,6 +153,7 @@ export default {
       attrIdAttrName: ""
     };
   },
+
   computed: {
     unUsedSaleAttrList() {
       return this.saleAttrList.filter(attr =>
@@ -161,6 +163,7 @@ export default {
       );
     }
   },
+
   methods: {
     async save() {
       const { spuInfo, spuImageList } = this;
@@ -255,7 +258,6 @@ export default {
       this.getTrademarkList();
       this.getSaleAttrList();
     },
-
     async getSpuInfo() {
       const result = await this.$API.spu.get(this.spuId);
       this.spuInfo = result.data;
@@ -272,12 +274,10 @@ export default {
 
       this.spuImageList = spuImageList;
     },
-
     async getTrademarkList() {
       const result = await this.$API.trademark.getList();
       this.trademarkList = result.data;
     },
-
     async getSaleAttrList() {
       const result = await this.$API.spu.getSaleList();
       this.saleAttrList = result.data;
